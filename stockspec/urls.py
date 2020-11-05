@@ -1,4 +1,4 @@
-"""am URL Configuration
+"""stockspec URL Configuration
 
 The `urlpatterns` list routes URLs to views. For more information please see:
     https://docs.djangoproject.com/en/3.1/topics/http/urls/
@@ -20,7 +20,7 @@ admin.site.site_header = "AlertMap Administration"
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("api/", include("am.api")),
+    path("api/", include("stockspec.api")),
     path(
         "api-auth/", include("rest_framework.urls", namespace="rest_framework")
     ),

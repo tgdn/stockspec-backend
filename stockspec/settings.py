@@ -21,7 +21,7 @@ except:
     pass
 
 # DEBUG is false by default. Change .env.local file to change this
-DEBUG = os.environ.get("AM_DEBUG", "0") == "1"
+DEBUG = os.environ.get("STOCKSPEC_DEBUG", "0") == "1"
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -31,11 +31,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ["AM_SECRET_KEY"]
+SECRET_KEY = os.environ["STOCKSPEC_SECRET_KEY"]
 
-CSRF_COOKIE_NAME = "am_csrf"
-LANGUAGE_COOKIE_NAME = "am_lang"
-SESSION_COOKIE_NAME = "am_session"
+CSRF_COOKIE_NAME = "sspec_csrf"
+LANGUAGE_COOKIE_NAME = "sspec_lang"
+SESSION_COOKIE_NAME = "sspec_session"
 ALLOWED_HOSTS = [
     # implement in prod
 ]
@@ -55,7 +55,7 @@ INSTALLED_APPS = [
     "rest_framework.authtoken",
     "social_django",
     # alertmap
-    "am.users",
+    "stockspec.users",
 ]
 
 MIDDLEWARE = [
@@ -73,7 +73,7 @@ REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": (
         "rest_framework.authentication.SessionAuthentication",
     ),
-    "EXCEPTION_HANDLER": "am.exceptions.api_exception_handler",
+    "EXCEPTION_HANDLER": "stockspec.exceptions.api_exception_handler",
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 10,
 }
@@ -83,7 +83,7 @@ if not DEBUG:
         "rest_framework.renderers.JSONRenderer",
     ]
 
-ROOT_URLCONF = "am.urls"
+ROOT_URLCONF = "stockspec.urls"
 
 # CORS
 CORS_ALLOW_CREDENTIALS = True
@@ -114,7 +114,7 @@ CORS_ALLOW_METHODS = [
     "PUT",
 ]
 
-WSGI_APPLICATION = "am.wsgi.application"
+WSGI_APPLICATION = "stockspec.wsgi.application"
 
 
 # Database
