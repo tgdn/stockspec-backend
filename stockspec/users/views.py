@@ -4,7 +4,7 @@ from rest_framework.decorators import api_view
 from rest_framework.response import Response
 from rest_framework.request import Request
 
-from am.users.serializers import UserSerializer
+from stockspec.users.serializers import UserSerializer
 
 
 logger = logging.getLogger(__name__)
