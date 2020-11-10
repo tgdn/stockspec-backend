@@ -40,6 +40,9 @@ ALLOWED_HOSTS = [
     # implement in prod
 ]
 
+# Env variables
+ALPHAVANTAGE_KEY = os.environ["AV_KEY"]
+
 
 # Application definition
 INSTALLED_APPS = [
@@ -56,6 +59,7 @@ INSTALLED_APPS = [
     "social_django",
     # alertmap
     "stockspec.users",
+    "stockspec.portfolio",
 ]
 
 MIDDLEWARE = [
