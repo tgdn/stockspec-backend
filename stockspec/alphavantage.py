@@ -6,6 +6,7 @@ from typing import List
 from concurrent.futures import ThreadPoolExecutor
 
 import pytz
+from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime
 
@@ -27,38 +28,15 @@ class AlphaVantage:
     INTERVAL = "30min"
     # in seconds
     REQUEST_TIMEOUT = 5
+    MAX_RETRIES = 3
 
     def __init__(self, api_key: str):
         self.api_key = api_key
         self.session = requests.Session()
-        # retry 3 times in case of failed request
-        adapter = requests.adapters.HTTPAdapter(max_retries=3)
+        # setup adaptor with retries
+        adapter = requests.adapters.HTTPAdapter(max_retries=self.MAX_RETRIES)
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
-
-    def get_timezone(self, symbol: str):
-        """Search symbol in AV to get symbol
-        """
-        function = "SYMBOL_SEARCH"
-
-        res = self._fetch(function=function, keywords=symbol)
-        rows = list(self._parse(res.content))
-        if len(rows) == 0:
-            logger.info(f"No results trying to fetch timezone for {symbol}")
-            return
-
-        # Let's use the first match
-        result = rows[0]
-        timezone = OFFSET_TIMEZONE_MAP.get(result.get("timezone"))
-
-        tz = None
-        try:
-            tz = pytz.timezone(timezone)
-        except pytz.exceptions.UnknownTimeZoneError:
-            pass
-
-        # return none if timezone not found
-        return tz if tz is not None else None
 
     def _parse(self, content):
         """Decode and parse CSV content from request
@@ -66,9 +44,9 @@ class AlphaVantage:
         decoded = content.decode("utf-8")
         return csv.DictReader(decoded.splitlines(), delimiter=",")
 
-    def _insert_prices(self, symbol, rows):
+    def _insert_prices(self, symbol: str, prices: List):
+        # get or create ticker row
         ticker, created = Ticker.objects.get_or_create(symbol=symbol)
-        # default to UTC
         tz = pytz.timezone(ticker.timezone)
         # set timezone if this is a new ticker
         if created:
@@ -77,26 +55,36 @@ class AlphaVantage:
                 ticker.timezone = tz.zone
                 ticker.save()
             else:
-                logger.warn(f"No timezone for {symbol}, using default: UTC")
+                logger.warn(
+                    f"{symbol}: timezone not found, using default: {settings.TIME_ZONE}"
+                )
 
-        objs = [
-            StockPrice(
-                ticker=ticker,
-                close_price=row.get("close"),
-                volume=row.get("volume"),
-                datetime=timezone.make_aware(
-                    parse_datetime(row.get("time")), tz
-                ),
+        # build list of price instances
+        objs = []
+        latest_time = (
+            StockPrice.objects.filter(ticker=symbol)
+            .order_by("-datetime")
+            .values("datetime")
+            .first()
+            or {}
+        ).get("datetime")
+
+        for row in prices:
+            # make time aware
+            time = timezone.make_aware(parse_datetime(row.get("time")), tz)
+            # filter duplicates
+            if latest_time is not None and time <= latest_time:
+                continue
+
+            objs.append(
+                StockPrice(
+                    ticker=ticker,
+                    close_price=row.get("close"),
+                    volume=row.get("volume"),
+                    datetime=time,
+                )
             )
-            for row in rows
-        ]
 
-        # Delete rows that may be inserted twice.
-        # Which is probably faster than filtering our list
-        last_row = objs[-1]
-        StockPrice.objects.filter(
-            ticker=symbol, datetime__gte=last_row.datetime
-        ).delete()
         # insert all prices
         StockPrice.objects.bulk_create(objs)
         ticker.last_updated = timezone.now()
@@ -136,7 +124,7 @@ class AlphaVantage:
         """
         function = "TIME_SERIES_INTRADAY_EXTENDED"
 
-        print(symbol)
+        logger.info(f"Gettting prices for: {symbol}")
         res = self._fetch(function=function, symbol=symbol, slice="year1month1")
         reader = self._parse(res.content)
         rows = list(reader)
@@ -155,3 +143,27 @@ class AlphaVantage:
                 executor.submit(self.fetch_symbol, symbol).result()
                 for symbol in symbols
             ]
+
+    def get_timezone(self, symbol: str):
+        """Search symbol in AV to get timezone
+        """
+        function = "SYMBOL_SEARCH"
+
+        res = self._fetch(function=function, keywords=symbol)
+        rows = list(self._parse(res.content))
+        if len(rows) == 0:
+            logger.info(f"No results trying to fetch timezone for {symbol}")
+            return
+
+        # Let's use the first match
+        result = rows[0]
+        timezone = OFFSET_TIMEZONE_MAP.get(result.get("timezone"))
+
+        tz = None
+        try:
+            tz = pytz.timezone(timezone)
+        except pytz.exceptions.UnknownTimeZoneError:
+            pass
+
+        # return none if timezone not found
+        return tz

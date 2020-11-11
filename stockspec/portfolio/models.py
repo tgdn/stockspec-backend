@@ -1,5 +1,6 @@
 import pytz
 from django.db import models
+from django.conf import settings
 
 TIMEZONES = tuple(zip(pytz.all_timezones, pytz.all_timezones))
 
@@ -12,7 +13,7 @@ class Ticker(models.Model):
         max_length=20, blank=False, null=False, primary_key=True
     )
     timezone = models.CharField(
-        max_length=100, choices=TIMEZONES, default="UTC"
+        max_length=100, choices=TIMEZONES, default=settings.TIME_ZONE
     )
     last_updated = models.DateTimeField(auto_now=True)
     logo_url = models.CharField(max_length=300)
