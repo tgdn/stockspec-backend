@@ -1,15 +1,19 @@
-from django.conf import settings
-from django.core.management.base import BaseCommand
+from datetime import timedelta
 
-from stockspec.alphavantage import AlphaVantage
+from django.utils import timezone
+
+from . import APIBaseCommand
+from stockspec.portfolio.models import Ticker
 
 
-class Command(BaseCommand):
+class Command(APIBaseCommand):
     """Get prices from AlphaVantage
     """
 
-    def __init__(self):
-        self.av = AlphaVantage(settings.ALPHAVANTAGE_KEY)
-
     def handle(self, *args, **kwargs):
-        self.av.fetch_symbols(["PLTR"])
+        # Our prices are at 30mins intervals
+        thirtyminsago = timezone.now() - timedelta(minutes=30)
+        symbols = Ticker.objects.filter(
+            last_updated__lte=thirtyminsago
+        ).values_list("symbol", flat=True)
+        self.av.fetch_symbols(symbols)

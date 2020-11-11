@@ -64,10 +64,9 @@ class AlphaVantage:
         latest_time = (
             StockPrice.objects.filter(ticker=symbol)
             .order_by("-datetime")
-            .values("datetime")
+            .values_list("datetime", flat=True)
             .first()
-            or {}
-        ).get("datetime")
+        )
 
         for row in prices:
             # make time aware
@@ -124,7 +123,7 @@ class AlphaVantage:
         """
         function = "TIME_SERIES_INTRADAY_EXTENDED"
 
-        logger.info(f"Gettting prices for: {symbol}")
+        logger.info(f"Fetching prices for: {symbol}")
         res = self._fetch(function=function, symbol=symbol, slice="year1month1")
         reader = self._parse(res.content)
         rows = list(reader)
@@ -139,10 +138,9 @@ class AlphaVantage:
         """A helper method to fetch symbols concurrently
         """
         with ThreadPoolExecutor() as executor:
-            [
+            for symbol in symbols:
+                # this may throw
                 executor.submit(self.fetch_symbol, symbol).result()
-                for symbol in symbols
-            ]
 
     def get_timezone(self, symbol: str):
         """Search symbol in AV to get timezone
