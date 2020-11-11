@@ -12,4 +12,4 @@ class Command(BaseCommand):
         self.av = AlphaVantage(settings.ALPHAVANTAGE_KEY)
 
     def handle(self, *args, **kwargs):
-        self.av.fetch_symbols(["AAPL", "GOOGL"])
+        self.av.fetch_symbols(["PLTR"])
