@@ -8,13 +8,6 @@ from stockspec.portfolio.models import Portfolio
 class Bet(models.Model):
     class Meta:
         db_table = "bet"
-        # check constraint that portfolio1_id < portfolio2_id
-        constraints = [
-            CheckConstraint(
-                check=Q(portfolio1__lt=F("portfolio2")),
-                name="check_portfolio_ids",
-            )
-        ]
 
     # for now 5, 10, 15
     FIVE = 5
@@ -27,12 +20,7 @@ class Bet(models.Model):
     ONEWEEK = "1W"
     DURATION_CHOICES = [(ONEDAY, "1 day"), (ONEWEEK, "1 week")]
 
-    portfolio1 = models.ForeignKey(
-        Portfolio, null=True, on_delete=models.SET_NULL, related_name="bet1",
-    )
-    portfolio2 = models.ForeignKey(
-        Portfolio, null=True, on_delete=models.SET_NULL, related_name="bet2",
-    )
+    portfolios = models.ManyToManyField(Portfolio)
 
     # keep it simple, use an int
     amount = models.IntegerField(choices=AMOUNT_CHOICES, default=FIVE)
