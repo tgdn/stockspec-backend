@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     # alertmap
     "stockspec.users",
     "stockspec.portfolio",
+    "stockspec.bet",
 ]
 
 MIDDLEWARE = [

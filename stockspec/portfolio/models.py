@@ -2,10 +2,15 @@ import pytz
 from django.db import models
 from django.conf import settings
 
+from stockspec.users.models import User
+
 TIMEZONES = tuple(zip(pytz.all_timezones, pytz.all_timezones))
 
 
 class Ticker(models.Model):
+    """A table that represents a ticker (a publicly listed stock/company)
+    """
+
     class Meta:
         db_table = "ticker"
 
@@ -28,6 +33,10 @@ class Ticker(models.Model):
 
 
 class StockPrice(models.Model):
+    """A table representing stock price
+    timeseries for specific tickers
+    """
+
     class Meta:
         db_table = "price"
 
@@ -35,3 +44,18 @@ class StockPrice(models.Model):
     close_price = models.DecimalField(decimal_places=4, max_digits=10)
     volume = models.BigIntegerField()
     datetime = models.DateTimeField()
+
+
+class Portfolio(models.Model):
+    """A table that represents a user's portfolio
+    including the M2M relationship to tickers.
+    """
+
+    class Meta:
+        db_table = "portfolio"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)
+    tickers = models.ManyToManyField(Ticker)
+
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
