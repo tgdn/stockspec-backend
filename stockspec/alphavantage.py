@@ -1,9 +1,11 @@
 import csv
 import logging
 import requests
+from random import randrange
+from time import sleep
 from urllib.parse import urlencode
-from typing import List
-from concurrent.futures import ThreadPoolExecutor
+from typing import List, Tuple
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 import pytz
 from django.conf import settings
@@ -50,7 +52,9 @@ class AlphaVantage:
         tz = pytz.timezone(ticker.timezone)
         # set timezone if this is a new ticker
         if created:
+            # fetch timezone and company info
             tz = self.get_timezone(symbol)
+            self.get_company_info(ticker)
             if tz is not None:
                 ticker.timezone = tz.zone
                 ticker.save()
@@ -89,6 +93,9 @@ class AlphaVantage:
         ticker.last_updated = timezone.now()
         ticker.save()
 
+        # number of actually inserted prices
+        return len(objs)
+
     def _fetch(self, **params):
         """encode url and make request
         """
@@ -113,7 +120,7 @@ class AlphaVantage:
 
         return res
 
-    def fetch_symbol(self, symbol: str):
+    def fetch_symbol(self, symbol: str) -> Tuple[int, int]:
         """Fetch prices for a symbol.
 
         Let's default to fetching the past month of trade data.
@@ -127,20 +134,33 @@ class AlphaVantage:
         res = self._fetch(function=function, symbol=symbol, slice="year1month1")
         reader = self._parse(res.content)
         rows = list(reader)
+
+        total_inserted = 0
         if len(rows) > 0:
-            self._insert_prices(symbol, rows)
+            total_inserted = self._insert_prices(symbol, rows)
         else:
             logger.info(f"Could not find any prices for symbol: {symbol}")
 
-        return res
+        # rows found, rows inserted
+        return len(rows), total_inserted
 
     def fetch_symbols(self, symbols: List[str]):
         """A helper method to fetch symbols concurrently
         """
         with ThreadPoolExecutor() as executor:
-            for symbol in symbols:
-                # this may throw
-                executor.submit(self.fetch_symbol, symbol).result()
+            fn = self.fetch_symbol
+            futures_symbol = {
+                executor.submit(fn, symbol): symbol for symbol in symbols
+            }
+
+            for future in as_completed(futures_symbol):
+                symbol = futures_symbol[future]
+                try:
+                    total, inserted = future.result()
+                except Exception as ex:
+                    logger.exception(f"{symbol} generated an exception:\n{ex}")
+                else:
+                    logger.info(f"{symbol}: found {total}, inserted {inserted}")
 
     def get_timezone(self, symbol: str):
         """Search symbol in AV to get timezone
@@ -165,3 +185,55 @@ class AlphaVantage:
 
         # return none if timezone not found
         return tz
+
+    def get_company_info(self, ticker: Ticker):
+        """Get company info from symbol
+        """
+        function = "OVERVIEW"
+        symbol = ticker.symbol
+
+        def fetch():
+            return self._fetch(function=function, symbol=symbol)
+
+        success = False
+        company = None
+        res = fetch()
+        sleep(randrange(0, 30, 15))
+
+        while not success:
+            try:
+                company = res.json()
+                # avoid getting locked out of api
+                if company.get("Note") is not None:
+                    sleep_time = randrange(30, 90, 15)
+                    logger.info(
+                        f"{symbol}: Got locked out, retrying in {sleep_time:.2f}s"
+                    )
+                    sleep(sleep_time)
+                    continue
+            except ValueError as ex:
+                logger.exception(
+                    f"Could not parse JSON when getting company info for {symbol}"
+                )
+                break
+            except Exception as ex:
+                logger.exception(
+                    f"{symbol}: exception trying to fetch company info:\n{ex}"
+                )
+                break
+            else:
+                success = True
+
+        if company is not None:
+            ticker.company = company.get("Name")
+            ticker.description = company.get("Description")
+            ticker.exchange = company.get("Exchange")
+            ticker.country = company.get("Country")
+            ticker.sector = company.get("Sector")
+            ticker.industry = company.get("Industry")
+            beta = company.get("Beta")
+            if beta == "None":
+                beta = None
+            ticker.beta = beta
+            ticker.save()
+

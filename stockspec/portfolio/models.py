@@ -16,7 +16,15 @@ class Ticker(models.Model):
         max_length=100, choices=TIMEZONES, default=settings.TIME_ZONE
     )
     last_updated = models.DateTimeField(auto_now=True)
-    logo_url = models.CharField(max_length=300)
+
+    company = models.CharField(max_length=100, blank=True, null=True)
+    description = models.TextField(null=True, blank=True)
+    exchange = models.CharField(max_length=30, null=True, blank=True)
+    country = models.CharField(max_length=50, null=True, blank=True)
+    sector = models.CharField(max_length=100, null=True, blank=True)
+    industry = models.CharField(max_length=100, null=True, blank=True)
+    beta = models.DecimalField(max_digits=5, decimal_places=4, null=True)
+    logo_url = models.CharField(max_length=300, null=True, blank=True)
 
 
 class StockPrice(models.Model):
