@@ -133,6 +133,7 @@ class AlphaVantage:
         logger.info(f"Fetching prices for: {symbol}")
         res = self._fetch(function=function, symbol=symbol, slice="year1month1")
         reader = self._parse(res.content)
+        res.close()
         rows = list(reader)
 
         total_inserted = 0
@@ -161,6 +162,18 @@ class AlphaVantage:
                     logger.exception(f"{symbol} generated an exception:\n{ex}")
                 else:
                     logger.info(f"{symbol}: found {total}, inserted {inserted}")
+
+    def import_symbols(self, symbols: List[str]):
+        """A non threaded method that imports
+        news symbols into the system.
+        It executes 3 requests every 30 seconds to avoid
+        being locked out of the api. (prices, timezone, company_info)
+        This means symbols are imported at a rate of 2 per minute (slow).
+        """
+
+        for symbol in symbols:
+            self.fetch_symbol(symbol)
+            sleep(30)
 
     def get_timezone(self, symbol: str):
         """Search symbol in AV to get timezone
@@ -205,7 +218,7 @@ class AlphaVantage:
                 company = res.json()
                 # avoid getting locked out of api
                 if company.get("Note") is not None:
-                    sleep_time = randrange(30, 90, 15)
+                    sleep_time = 60  # randrange(30, 90, 15)
                     logger.info(
                         f"{symbol}: Got locked out, retrying in {sleep_time:.2f}s"
                     )
