@@ -210,8 +210,9 @@ class AlphaVantage:
 
         success = False
         company = None
-        res = fetch()
+        # sleep before request to avoid lock
         sleep(randrange(0, 30, 15))
+        res = fetch()
 
         while not success:
             try:
