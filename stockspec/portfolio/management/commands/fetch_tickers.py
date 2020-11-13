@@ -13,5 +13,5 @@ class Command(APIBaseCommand):
         )
 
     def handle(self, *args, **kwargs):
-        tickers = kwargs.get("tickers")
-        self.av.fetch_symbols(tickers)
+        symbols = kwargs.get("tickers")
+        self.av.import_symbols(symbols)
