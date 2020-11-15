@@ -37,13 +37,18 @@ class Ticker(models.Model):
 
     @staticmethod
     def top_tickers():
-        top_tickers = (
-            Ticker.portfolio_set.through.objects.values("ticker")
-            .annotate(count=Count("ticker"))
-            .order_by("-count")
-            .values("ticker")
-        )
-        return Ticker.objects.filter(symbol__in=Subquery(top_tickers))[:10]
+        # simpler in sql
+        sql = """
+        SELECT
+        COUNT(portfolio_tickers.ticker_id) as ticker_count,
+        ticker.*
+        FROM portfolio_tickers
+        INNER JOIN ticker ON ticker.symbol=portfolio_tickers.ticker_id
+        GROUP BY portfolio_tickers.ticker_id
+        ORDER BY ticker_count DESC
+        LIMIT 10
+        """
+        return Ticker.objects.raw(sql)
 
     @property
     def latest_price(self):
