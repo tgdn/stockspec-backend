@@ -12,6 +12,7 @@ class BetSerializer(serializers.ModelSerializer):
         depth = 3
         model = Bet
         fields = [
+            "id",
             "users",
             "amount",
             "duration",
