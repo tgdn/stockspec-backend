@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import Count
+from django.db.models import Count, Subquery
 
 from stockspec.users.models import User
 from stockspec.portfolio.models import Portfolio
@@ -33,22 +33,27 @@ class Bet(models.Model):
         User, default=None, blank=True, null=True, on_delete=models.SET_NULL
     )
 
-    start_time = models.DateTimeField(null=True)
-    end_time = models.DateTimeField(null=True)
+    start_time = models.DateTimeField(null=True, blank=True)
+    end_time = models.DateTimeField(null=True, blank=True)
 
-    updated_at = models.DateTimeField(auto_now=True)
-    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, blank=True)
 
     def __str__(self):
         usernames = self.portfolios.values_list("user__username", flat=True)[:2]
         return ":".join(usernames)
 
+    @property
+    def users(self):
+        user_ids = self.portfolios.values_list("user", flat=True)
+        return User.objects.filter(id__in=Subquery(user_ids[:2]))
+
     @staticmethod
     def awaiting():
         return (
             Bet.objects.all()
-            .annotate(count=Count("portfolios"))
-            .filter(count__lt=2)
+            .annotate(portfolio_count=Count("portfolios"))
+            .filter(portfolio_count__lt=2)
         )
 
     @staticmethod
