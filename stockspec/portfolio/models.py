@@ -38,26 +38,28 @@ class Ticker(models.Model):
 
     @staticmethod
     def top_tickers():
-        # simpler in sql
+        """Get tickers that have been used the most in portfolios
+        """
+        # cant do all of this in one query with the orm...
+        # be aware there is an extra column returned `price`
+        # which is the latest stock price found.
         sql = """
         SELECT
         COUNT(portfolio_tickers.ticker_id) as ticker_count,
-        ticker.*
+        ticker.*,
+        T.close_price AS price
         FROM portfolio_tickers
         INNER JOIN ticker ON ticker.symbol=portfolio_tickers.ticker_id
+        LEFT JOIN (
+            SELECT ticker_id, close_price, max(datetime)
+            FROM price
+            GROUP BY ticker_id
+        ) T ON T.ticker_id=ticker.symbol
         GROUP BY portfolio_tickers.ticker_id
         ORDER BY ticker_count DESC
         LIMIT 10
         """
         return Ticker.objects.raw(sql)
-
-    @property
-    def latest_price(self):
-        return (
-            self.prices.order_by("-datetime")
-            .values_list("close_price", flat=True)
-            .first()
-        )
 
 
 class StockPrice(models.Model):

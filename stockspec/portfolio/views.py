@@ -38,7 +38,7 @@ class PriceSeries(ListAPIView):
     lookup_field = "symbol"
 
     def get_queryset(self):
-        """Returns a series of the last 100 prices efficiently
+        """Returns a series of the last 100 prices for a symbol
         """
         assert self.lookup_field in self.kwargs, (
             "Expected %s to be called with a URL keyword argument named '%s'."
