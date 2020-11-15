@@ -8,6 +8,7 @@ from stockspec.portfolio.models import Portfolio
 class Bet(models.Model):
     class Meta:
         db_table = "bet"
+        ordering = ["-created_at"]
 
     # for now 5, 10, 15
     FIVE = 5
