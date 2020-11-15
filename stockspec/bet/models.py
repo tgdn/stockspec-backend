@@ -1,5 +1,5 @@
 from django.db import models
-from django.db.models import CheckConstraint, Q, F
+from django.db.models import Count
 
 from stockspec.users.models import User
 from stockspec.portfolio.models import Portfolio
@@ -30,7 +30,7 @@ class Bet(models.Model):
 
     # default is null
     winner = models.ForeignKey(
-        User, default=None, null=True, on_delete=models.SET_NULL
+        User, default=None, blank=True, null=True, on_delete=models.SET_NULL
     )
 
     start_time = models.DateTimeField(null=True)
@@ -39,3 +39,22 @@ class Bet(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
+    def __str__(self):
+        usernames = self.portfolios.values_list("user__username", flat=True)[:2]
+        return ":".join(usernames)
+
+    @staticmethod
+    def awaiting():
+        return (
+            Bet.objects.all()
+            .annotate(count=Count("portfolios"))
+            .filter(count__lt=2)
+        )
+
+    @staticmethod
+    def not_finished():
+        return Bet.objects.filter(winner__isnull=True)
+
+    @staticmethod
+    def finished():
+        return Bet.objects.filter(winner__isnull=False)
