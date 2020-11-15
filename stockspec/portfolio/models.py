@@ -14,6 +14,7 @@ class Ticker(models.Model):
 
     class Meta:
         db_table = "ticker"
+        ordering = ["symbol"]
 
     symbol = models.CharField(
         max_length=20, blank=False, null=False, primary_key=True
@@ -66,6 +67,7 @@ class StockPrice(models.Model):
 
     class Meta:
         db_table = "price"
+        ordering = ["datetime"]
 
     ticker = models.ForeignKey(
         Ticker, on_delete=models.CASCADE, related_name="prices"
@@ -82,6 +84,7 @@ class Portfolio(models.Model):
 
     class Meta:
         db_table = "portfolio"
+        ordering = ["-updated_at", "name"]
 
     name = models.CharField(max_length=100, blank=True, null=True)
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=False)

@@ -1,6 +1,6 @@
 from rest_framework import serializers
 
-from stockspec.portfolio.models import Portfolio, Ticker
+from stockspec.portfolio.models import Portfolio, Ticker, StockPrice
 
 
 class PortfolioSerialier(serializers.ModelSerializer):
@@ -28,4 +28,13 @@ class TickerSerializer(serializers.ModelSerializer):
             "logo_url",
             "latest_price",
         ]
+
+
+class StockPriceSerializer(serializers.ModelSerializer):
+    price = serializers.ReadOnlyField(source="close_price")
+    time = serializers.ReadOnlyField(source="datetime")
+
+    class Meta:
+        model = StockPrice
+        fields = ["price", "time", "volume"]
 
