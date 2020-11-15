@@ -49,6 +49,14 @@ class Bet(models.Model):
         return User.objects.filter(id__in=Subquery(user_ids[:2]))
 
     @staticmethod
+    def ongoing():
+        return (
+            Bet.objects.all()
+            .annotate(portfolio_count=Count("portfolios"))
+            .filter(portfolio_count=2, winner__isnull=True)
+        )
+
+    @staticmethod
     def awaiting():
         return (
             Bet.objects.all()

@@ -33,4 +33,7 @@ class BetList(ListCreateAPIView):
             return Bet.awaiting() & queryset
         elif self.previous:
             return Bet.finished() & queryset
+
+        if self.all_bets:
+            return Bet.ongoing()
         return Bet.not_finished() & queryset
