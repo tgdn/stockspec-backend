@@ -51,7 +51,7 @@ class Ticker(models.Model):
         FROM portfolio_tickers
         INNER JOIN ticker ON ticker.symbol=portfolio_tickers.ticker_id
         LEFT JOIN (
-            SELECT ticker_id, close_price, max(datetime)
+            SELECT ticker_id, close_price, max(date)
             FROM price
             GROUP BY ticker_id
         ) T ON T.ticker_id=ticker.symbol
