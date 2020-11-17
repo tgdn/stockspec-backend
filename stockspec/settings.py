@@ -42,6 +42,9 @@ ALLOWED_HOSTS = [
 
 # Env variables
 ALPHAVANTAGE_KEY = os.environ["AV_KEY"]
+ALPHAVANTAGE_KEY_POOL = os.environ.get("AV_KEY_POOL", ALPHAVANTAGE_KEY).split(
+    ","
+)
 
 
 # Application definition
