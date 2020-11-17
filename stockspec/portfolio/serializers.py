@@ -32,7 +32,7 @@ class TickerSerializer(serializers.ModelSerializer):
 
 class StockPriceSerializer(serializers.ModelSerializer):
     price = serializers.ReadOnlyField(source="close_price")
-    time = serializers.ReadOnlyField(source="datetime")
+    time = serializers.ReadOnlyField(source="date")
 
     class Meta:
         model = StockPrice

@@ -9,4 +9,4 @@ class APIBaseCommand(BaseCommand):
     """
 
     def __init__(self):
-        self.av = AlphaVantage(settings.ALPHAVANTAGE_KEY)
+        self.av = AlphaVantage(settings.ALPHAVANTAGE_KEY_POOL)

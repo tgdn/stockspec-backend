@@ -53,7 +53,7 @@ class PriceSeries(ListAPIView):
             """
             SELECT * FROM price
             WHERE ticker_id = %s
-            ORDER BY datetime ASC
+            ORDER BY date ASC
             LIMIT 100
             OFFSET (SELECT count(*) FROM price WHERE ticker_id = %s) - 100
             """,

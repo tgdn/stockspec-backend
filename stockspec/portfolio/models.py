@@ -69,14 +69,14 @@ class StockPrice(models.Model):
 
     class Meta:
         db_table = "price"
-        ordering = ["datetime"]
+        ordering = ["date"]
 
     ticker = models.ForeignKey(
         Ticker, on_delete=models.CASCADE, related_name="prices"
     )
     close_price = models.DecimalField(decimal_places=4, max_digits=10)
     volume = models.BigIntegerField()
-    datetime = models.DateTimeField()
+    date = models.DateField(null=True)
 
 
 class Portfolio(models.Model):
