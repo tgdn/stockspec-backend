@@ -177,9 +177,10 @@ class AlphaVantage:
         This means symbols are imported at a rate of 2 per minute (slow).
         """
 
+        api_keygen = itertools.cycle(self.api_key_pool)
         for symbol in symbols:
-            self.fetch_symbol(symbol)
-            sleep(30)
+            self.fetch_symbol(symbol, next(api_keygen))
+            sleep(10)
 
     def get_timezone(self, symbol: str):
         """Search symbol in AV to get timezone"""
