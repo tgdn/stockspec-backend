@@ -14,7 +14,6 @@ class Ticker(models.Model):
 
     class Meta:
         db_table = "ticker"
-        ordering = ["symbol"]
 
     symbol = models.CharField(
         max_length=20, blank=False, null=False, primary_key=True
