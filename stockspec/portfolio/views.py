@@ -25,6 +25,15 @@ class PortfolioList(ListCreateAPIView):
         serializer.save(user=self.request.user)
 
 
+class TickerList(ListAPIView):
+    permission_classes = [IsAuthenticated]
+    serializer_class = TickerSerializer
+    # Ticker.objects.annotate(
+    #     price=F("prices__close_price"), maxdate=Max("prices__date")
+    # ).order_by("-maxdate").groupby
+    queryset = Ticker.objects.all()
+
+
 class TopTickersList(ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TickerSerializer

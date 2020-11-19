@@ -3,7 +3,12 @@ from rest_framework.authtoken.views import obtain_auth_token
 
 from stockspec.users.views import current_user
 from stockspec.bet.views import BetList
-from stockspec.portfolio.views import PortfolioList, TopTickersList, PriceSeries
+from stockspec.portfolio.views import (
+    PortfolioList,
+    TickerList,
+    TopTickersList,
+    PriceSeries,
+)
 
 urlpatterns = [
     path("auth-token", obtain_auth_token),
@@ -15,6 +20,7 @@ urlpatterns = [
     path("bets/all/awaiting", BetList.as_view(all_bets=True, awaiting=True)),
     # portfolio
     path("portfolios/", PortfolioList.as_view()),
+    path("tickers", TickerList.as_view()),
     path("tickers/top", TopTickersList.as_view()),
     # series
     path("series/<str:symbol>", PriceSeries.as_view()),
