@@ -28,6 +28,7 @@ class PortfolioList(ListCreateAPIView):
 class TickerList(ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TickerSerializer
+    pagination_class = None
     # Ticker.objects.annotate(
     #     price=F("prices__close_price"), maxdate=Max("prices__date")
     # ).order_by("-maxdate").groupby
