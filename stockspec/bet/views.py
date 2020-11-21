@@ -1,11 +1,11 @@
-from rest_framework.generics import ListCreateAPIView
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.viewsets import ModelViewSet
 
 from stockspec.bet.models import Bet
 from stockspec.bet.serializers import BetSerializer
 
 
-class BetList(ListCreateAPIView):
+class BetsViewSet(ModelViewSet):
     # some filtering params passed to .as_view(**kwargs)
     all_bets = False  # not only the current user's
     awaiting = False  # awaiting an opponent
@@ -17,6 +17,8 @@ class BetList(ListCreateAPIView):
     def get_queryset(self):
         """return bets owned by current user or all
         """
+        print(self.all_bets)
+        print(self.action)
 
         # by default we return user's current bets
         user = self.request.user
@@ -37,3 +39,4 @@ class BetList(ListCreateAPIView):
         if self.all_bets:
             return Bet.ongoing()
         return Bet.not_finished() & queryset
+
