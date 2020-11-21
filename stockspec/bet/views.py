@@ -1,8 +1,9 @@
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
+from rest_framework.exceptions import PermissionDenied
 
 from stockspec.bet.models import Bet
-from stockspec.bet.serializers import BetSerializer
+from stockspec.bet.serializers import BetSerializer, CreateBetSerializer
 
 
 class BetsViewSet(ModelViewSet):
@@ -14,11 +15,17 @@ class BetsViewSet(ModelViewSet):
     permission_classes = [IsAuthenticated]
     serializer_class = BetSerializer
 
+    def update(self, request, *args, **kwargs):
+        raise PermissionDenied()
+
+    def get_serializer_class(self):
+        if self.action == "create":
+            return CreateBetSerializer
+        return super().get_serializer_class()
+
     def get_queryset(self):
         """return bets owned by current user or all
         """
-        print(self.all_bets)
-        print(self.action)
 
         # by default we return user's current bets
         user = self.request.user
