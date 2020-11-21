@@ -1,4 +1,5 @@
 import pytz
+from typing import List
 from django.db import models
 from django.db.models import Count, Subquery
 from django.conf import settings
@@ -37,8 +38,7 @@ class Ticker(models.Model):
 
     @staticmethod
     def top_tickers():
-        """Get tickers that have been used the most in portfolios
-        """
+        """Get tickers that have been used the most in portfolios"""
         # cant do all of this in one query with the orm...
         # be aware there is an extra column returned `price`
         # which is the latest stock price found.
@@ -96,3 +96,23 @@ class Portfolio(models.Model):
 
     def __str__(self):
         return f"{self.user.username}#{self.id}"
+
+    @classmethod
+    def exact_tickers(cls, tickers: List[Ticker]):
+        """A method that returns portfolios with exactly given tickers.
+
+        It dynamically filters to match exact symbols, which unfortunately
+        joins the ticker table n-times (once for each comparison).
+        SQLite has a hard limit of 64 joins, our portfolios should not have more.
+        ref: https://www.sqlite.org/limits.html
+        """
+        # avoid database error
+        tickers = tickers[:63]
+        queryset = cls.objects.annotate(count=Count("tickers")).filter(
+            count=len(tickers)
+        )
+
+        # dynamically chain filters
+        for ticker in tickers:
+            queryset = queryset.filter(tickers__symbol=ticker.symbol)
+        return queryset

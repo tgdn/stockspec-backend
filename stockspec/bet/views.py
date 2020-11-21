@@ -1,6 +1,8 @@
+from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.exceptions import PermissionDenied
+from rest_framework.response import Response
 
 from stockspec.bet.models import Bet
 from stockspec.bet.serializers import BetSerializer, CreateBetSerializer
@@ -17,6 +19,17 @@ class BetsViewSet(ModelViewSet):
 
     def update(self, request, *args, **kwargs):
         raise PermissionDenied()
+
+    def create(self, request, *args, **kwargs):
+        """
+        Logically the same code as the parent,
+        but with a different output serializer.
+        """
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        self.perform_create(serializer)
+        outserizalizer = self.serializer_class(instance=serializer.instance)
+        return Response(outserizalizer.data, status.HTTP_201_CREATED)
 
     def get_serializer_class(self):
         if self.action == "create":
