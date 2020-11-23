@@ -30,12 +30,10 @@ class APIRateLimited(Exception):
 
 
 class AlphaVantage:
-    """A simple threaded interface to the AlphaVantage api.
-    """
+    """A simple threaded interface to the AlphaVantage api."""
 
     API_URL = "https://www.alphavantage.co/query?"
-    # in seconds
-    REQUEST_TIMEOUT = 5
+    REQUEST_TIMEOUT = 5  # in seconds
     MAX_RETRIES = 3
 
     def __init__(self, api_key_pool: str):
@@ -88,9 +86,14 @@ class AlphaVantage:
 
         # insert all prices
         StockPrice.objects.bulk_create(objs)
-        # we dont want to update the last_updated
+        # we dont want to update ticker
         # unless we inserted some rows
-        if len(objs) > 0:
+        if 1 == 1 or len(objs) > 0:
+            # get last 2 rows and update last_price and performance
+            start, end = StockPrice.get_series(symbol, 2)
+            ticker.last_price = end.close_price
+            ticker.delta = end.close_price - start.close_price
+            ticker.percentage_change = ticker.delta / start.close_price
             ticker.last_updated = timezone.now()
             ticker.save()
 
@@ -158,7 +161,7 @@ class AlphaVantage:
                     executor.submit(fn, symbol, next(api_keygen))
                 ] = symbol
                 if i % threshold == 0:
-                    sleep(65)  # sleep one minute when threshold is reached
+                    sleep(60)  # sleep one minute when threshold is reached
 
             for future in as_completed(futures_symbol):
                 symbol = futures_symbol[future]
@@ -170,7 +173,8 @@ class AlphaVantage:
                     logger.info(f"{symbol}: found {total}, inserted {inserted}")
 
     def import_symbols(self, symbols: List[str]):
-        """A non threaded method that imports
+        """
+        A non threaded method that imports
         news symbols into the system.
         It executes 3 requests every 30 seconds to avoid
         being locked out of the api. (prices, timezone, company_info)
@@ -178,10 +182,14 @@ class AlphaVantage:
         """
 
         api_keygen = itertools.cycle(self.api_key_pool)
-        for symbol in symbols:
+        for i, symbol in enumerate(symbols):
             self.fetch_symbol(symbol, next(api_keygen))
-            sleep(10)
+            if i % len(self.api_key_pool) == 0:
+                sleep(30)
+            else:
+                sleep(5)
 
+    @DeprecationWarning
     def get_timezone(self, symbol: str):
         """Search symbol in AV to get timezone"""
 

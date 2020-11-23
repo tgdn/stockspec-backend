@@ -11,8 +11,6 @@ class PortfolioSerialier(serializers.ModelSerializer):
 
 
 class TickerSerializer(serializers.ModelSerializer):
-    price = serializers.ReadOnlyField()
-
     class Meta:
         model = Ticker
         fields = [
@@ -26,7 +24,9 @@ class TickerSerializer(serializers.ModelSerializer):
             "industry",
             "beta",
             "logo_url",
-            "price",
+            "last_price",
+            "delta",
+            "percentage_change",
         ]
 
 

@@ -53,20 +53,12 @@ class Ticker(models.Model):
     def top_tickers():
         """Get tickers that have been used the most in portfolios"""
         # cant do all of this in one query with the orm...
-        # be aware there is an extra column returned `price`
-        # which is the latest stock price found.
         sql = """
         SELECT
         COUNT(portfolio_tickers.ticker_id) as ticker_count,
-        ticker.*,
-        T.close_price AS price
+        ticker.*
         FROM portfolio_tickers
         INNER JOIN ticker ON ticker.symbol=portfolio_tickers.ticker_id
-        LEFT JOIN (
-            SELECT ticker_id, close_price, max(date)
-            FROM price
-            GROUP BY ticker_id
-        ) T ON T.ticker_id=ticker.symbol
         GROUP BY portfolio_tickers.ticker_id
         ORDER BY ticker_count DESC
         LIMIT 10
