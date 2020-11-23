@@ -16,8 +16,7 @@ class PortfolioList(ListCreateAPIView):
     serializer_class = PortfolioSerialier
 
     def get_queryset(self):
-        """return portfolios owned by current user
-        """
+        """return portfolios owned by current user"""
         user = self.request.user
         return Portfolio.objects.filter(user=user)
 
@@ -29,9 +28,6 @@ class TickerList(ListAPIView):
     permission_classes = [IsAuthenticated]
     serializer_class = TickerSerializer
     pagination_class = None
-    # Ticker.objects.annotate(
-    #     price=F("prices__close_price"), maxdate=Max("prices__date")
-    # ).order_by("-maxdate").groupby
     queryset = Ticker.objects.all()
 
 

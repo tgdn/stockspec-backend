@@ -49,6 +49,25 @@ class Ticker(models.Model):
     def __str__(self):
         return self.symbol
 
+    def price_at_date(self, date):
+        """returns the price just before given date (latest price)"""
+        return (
+            self.prices.filter(date__lte=date)
+            .values_list("close_price", flat=True)
+            .order_by("-date")
+            .first()
+        )
+
+    def return_for_period(self, start_date, end_date):
+        """calculates performance of an asset within period time"""
+        price_start = self.price_at_date(start_date)
+        price_end = self.price_at_date(end_date)
+        # check whether we have prices for period
+        if not all([price_start, price_end]):
+            raise Exception("No prices for given period")
+
+        return (price_end - price_start) / price_start
+
     @staticmethod
     def top_tickers():
         """Get tickers that have been used the most in portfolios"""
@@ -118,6 +137,15 @@ class Portfolio(models.Model):
 
     def __str__(self):
         return f"{self.user.username}#{self.id}"
+
+    def return_for_period(self, start_date, end_date):
+        """return the performance of a portfolio over a period of time"""
+        returns = [
+            ticker.return_for_period(start_date, end_date)
+            for ticker in self.tickers.all()
+        ]
+        # for now all assets have the same weight (1/len(assets))
+        return sum(returns) / len(returns)
 
     @classmethod
     def exact_tickers(cls, tickers: List[Ticker]):
