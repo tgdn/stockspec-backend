@@ -26,11 +26,25 @@ class BetSerializer(serializers.ModelSerializer):
         ]
 
     def get_portfolios(self, obj: Bet):
-        if obj.portfolios.count() > 1:
+        """
+        A method that returns the serialized portfolios iff:
+            - the bet started, and therefore assets can be viewed by all.
+            - there is only one opponent, and it is the current user.
+        Otherwise it returns null
+        """
+        portfolio_count = obj.portfolios.count()
+        request = self.context.get("request")
+        if portfolio_count > 1:
             context = dict(start_date=obj.start_time, end_date=obj.end_time)
             return PortfolioSerialier(
                 obj.portfolios, context=context, many=True,
             ).data
+        elif (
+            hasattr(request, "user")
+            and portfolio_count == 1
+            and obj.portfolios.first().user.id == request.user.id
+        ):
+            return PortfolioSerialier(obj.portfolios, many=True).data
         return None
 
 
