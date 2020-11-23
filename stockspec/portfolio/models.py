@@ -19,6 +19,19 @@ class Ticker(models.Model):
     symbol = models.CharField(
         max_length=20, blank=False, null=False, primary_key=True
     )
+
+    # store last price and delta change
+    # to avoid the extra join when querying.
+    last_price = models.DecimalField(
+        decimal_places=4, max_digits=10, null=True, blank=True
+    )
+    delta_change = models.DecimalField(
+        decimal_places=4, max_digits=10, null=True, blank=True
+    )
+    percentage_change = models.DecimalField(
+        decimal_places=4, max_digits=6, null=True, blank=True
+    )
+
     timezone = models.CharField(
         max_length=100, choices=TIMEZONES, default=settings.TIME_ZONE
     )
@@ -76,6 +89,23 @@ class StockPrice(models.Model):
     close_price = models.DecimalField(decimal_places=4, max_digits=10)
     volume = models.BigIntegerField()
     date = models.DateField(null=True)
+
+    @staticmethod
+    def get_series(symbol: str, length: int):
+        """Efficient limit-offset method for getting last n-rows"""
+        return StockPrice.objects.raw(
+            """
+            SELECT * FROM price
+            WHERE ticker_id = %s
+            ORDER BY date ASC
+            LIMIT %s
+            OFFSET (
+                SELECT count(*)
+                FROM price WHERE ticker_id = %s
+            ) - %s
+            """,
+            [symbol, length, symbol, length],
+        )
 
 
 class Portfolio(models.Model):

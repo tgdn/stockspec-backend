@@ -48,8 +48,7 @@ class PriceSeries(ListAPIView):
     lookup_field = "symbol"
 
     def get_queryset(self):
-        """Returns a series of the last 100 prices for a symbol
-        """
+        """Returns a series of the last 100 prices for a symbol"""
         assert self.lookup_field in self.kwargs, (
             "Expected %s to be called with a URL keyword argument named '%s'."
             % (self.__class__.__name__, self.lookup_field)
@@ -57,16 +56,5 @@ class PriceSeries(ListAPIView):
         # check symbol
         symbol = self.kwargs[self.lookup_field]
         get_object_or_404(Ticker, symbol=symbol)
-
-        # Efficient limit-offset method for getting last n-rows
-        return StockPrice.objects.raw(
-            """
-            SELECT * FROM price
-            WHERE ticker_id = %s
-            ORDER BY date ASC
-            LIMIT 100
-            OFFSET (SELECT count(*) FROM price WHERE ticker_id = %s) - 100
-            """,
-            [symbol, symbol],
-        )
+        return StockPrice.get_series(symbol, 100)
 
