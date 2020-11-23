@@ -20,6 +20,8 @@ class BetsViewSet(ModelViewSet):
     def update(self, request, *args, **kwargs):
         raise PermissionDenied()
 
+    # def retrieve():
+
     def create(self, request, *args, **kwargs):
         """
         Logically the same code as the parent,
@@ -39,6 +41,9 @@ class BetsViewSet(ModelViewSet):
     def get_queryset(self):
         """return bets owned by current user or all
         """
+
+        if self.action == "retrieve":
+            return Bet.objects.prefetch_related("portfolios").all()
 
         # by default we return user's current bets
         user = self.request.user

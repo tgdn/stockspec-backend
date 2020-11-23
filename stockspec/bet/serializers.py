@@ -2,14 +2,16 @@ from rest_framework import serializers
 
 from stockspec.bet.models import Bet
 from stockspec.portfolio.models import Portfolio, Ticker
+from stockspec.portfolio.serializers import PortfolioSerialier
 from stockspec.users.serializers import BaseUserSerializer
 
 
 class BetSerializer(serializers.ModelSerializer):
     users = BaseUserSerializer(read_only=True, many=True)
+    winner = BaseUserSerializer(read_only=True)
+    portfolios = serializers.SerializerMethodField()
 
     class Meta:
-        depth = 3
         model = Bet
         fields = [
             "id",
@@ -17,10 +19,19 @@ class BetSerializer(serializers.ModelSerializer):
             "amount",
             "duration",
             "winner",
+            "portfolios",
             "start_time",
             "end_time",
             "created_at",
         ]
+
+    def get_portfolios(self, obj: Bet):
+        if obj.portfolios.count() > 1:
+            context = dict(start_date=obj.start_time, end_date=obj.end_time)
+            return PortfolioSerialier(
+                obj.portfolios, context=context, many=True,
+            ).data
+        return None
 
 
 class CreateBetSerializer(serializers.ModelSerializer):
