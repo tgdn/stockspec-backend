@@ -25,7 +25,7 @@ class Ticker(models.Model):
     last_price = models.DecimalField(
         decimal_places=4, max_digits=10, null=True, blank=True
     )
-    delta_change = models.DecimalField(
+    delta = models.DecimalField(
         decimal_places=4, max_digits=10, null=True, blank=True
     )
     percentage_change = models.DecimalField(
