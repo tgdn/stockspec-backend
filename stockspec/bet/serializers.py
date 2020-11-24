@@ -7,7 +7,6 @@ from stockspec.users.serializers import BaseUserSerializer
 
 
 class BetSerializer(serializers.ModelSerializer):
-    users = BaseUserSerializer(read_only=True, many=True)
     winner = BaseUserSerializer(read_only=True)
     portfolios = serializers.SerializerMethodField()
 
@@ -15,7 +14,6 @@ class BetSerializer(serializers.ModelSerializer):
         model = Bet
         fields = [
             "id",
-            "users",
             "amount",
             "duration",
             "winner",
@@ -27,25 +25,40 @@ class BetSerializer(serializers.ModelSerializer):
 
     def get_portfolios(self, obj: Bet):
         """
-        A method that returns the serialized portfolios iff:
+        This method returns the serialized portfolios and includes or not
+        the tickers of those portfolios. Tickers are returned iff:
             - the bet started, and therefore assets can be viewed by all.
             - there is only one opponent, and it is the current user.
-        Otherwise it returns null
+        Otherwise the portfolio will be returned but its assets will be hidden/null.
+
+        In addition to this, the method lets the portfolio serializer
+        calculate the performance of the portfolio if the bet started.
         """
+
         portfolio_count = obj.portfolios.count()
         request = self.context.get("request")
-        if portfolio_count > 1:
-            context = dict(start_date=obj.start_time, end_date=obj.end_time)
-            return PortfolioSerialier(
-                obj.portfolios, context=context, many=True,
-            ).data
-        elif (
-            hasattr(request, "user")
-            and portfolio_count == 1
+        with_tickers = False
+
+        # is it the current and only user in the bet?
+        if (
+            request is not None
+            and hasattr(request, "user")
             and obj.portfolios.first().user.id == request.user.id
         ):
-            return PortfolioSerialier(obj.portfolios, many=True).data
-        return None
+            with_tickers = True
+        # the bet has already started?
+        elif portfolio_count == 2 and all([obj.start_time, obj.end_time]):
+            with_tickers == True
+
+        # copy context (deepcopy is probably not needed)
+        context = dict(self.context)
+        context["with_tickers"] = with_tickers
+        context["start_date"] = obj.start_time
+        context["end_date"] = obj.end_time
+
+        return PortfolioSerialier(
+            obj.portfolios, context=context, many=True
+        ).data
 
 
 class CreateBetSerializer(serializers.ModelSerializer):

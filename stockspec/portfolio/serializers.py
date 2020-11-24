@@ -1,10 +1,13 @@
 from rest_framework import serializers
 
+from stockspec.users.serializers import BaseUserSerializer
 from stockspec.portfolio.models import Portfolio, Ticker, StockPrice
 
 
 class PortfolioSerialier(serializers.ModelSerializer):
+    tickers = serializers.SerializerMethodField()
     perf = serializers.SerializerMethodField()
+    user = BaseUserSerializer()
 
     class Meta:
         model = Portfolio
@@ -18,6 +21,13 @@ class PortfolioSerialier(serializers.ModelSerializer):
 
             if all([start_date, end_date]):
                 return obj.return_for_period(start_date, end_date)
+        return None
+
+    def get_tickers(self, obj: Portfolio):
+        if self.context.get("with_tickers", False):
+            return TickerSerializer(
+                obj.tickers, context=self.context, many=True
+            ).data
         return None
 
 
