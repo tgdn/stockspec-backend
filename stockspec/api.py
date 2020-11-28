@@ -25,7 +25,12 @@ urlpatterns = [
     path("series/<str:symbol>", PriceSeries.as_view()),
     # bets
     path("bets/awaiting", BetsViewSet.as_view({"get": "list"}, awaiting=True)),
+    path("bets/past", BetsViewSet.as_view({"get": "list"}, previous=True)),
     path("bets/all", BetsViewSet.as_view({"get": "list"}, all_bets=True)),
+    path(
+        "bets/all/past",
+        BetsViewSet.as_view({"get": "list"}, all_bets=True, previous=True),
+    ),
     path(
         "bets/all/awaiting",
         BetsViewSet.as_view({"get": "list"}, all_bets=True, awaiting=True),
