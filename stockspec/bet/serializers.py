@@ -25,6 +25,9 @@ class BetSerializer(serializers.ModelSerializer):
 
     def get_portfolios(self, obj: Bet):
         """
+        Disclaimer:
+            By default, if bet hasnt started, portfolios should be kept private.
+
         This method returns the serialized portfolios and includes or not
         the tickers of those portfolios. Tickers are returned iff:
             - the bet started, and therefore assets can be viewed by all.
@@ -50,12 +53,12 @@ class BetSerializer(serializers.ModelSerializer):
         elif portfolio_count == 2 and all([obj.start_time, obj.end_time]):
             with_tickers == True
 
-        # copy context (deepcopy is probably not needed)
-        context = dict(self.context)
-        context["with_tickers"] = with_tickers
-        context["start_date"] = obj.start_time
-        context["end_date"] = obj.end_time
-
+        context = {
+            **self.context,
+            "with_tickers": with_tickers,
+            "start_date": obj.start_time,
+            "end_date": obj.end_time,
+        }
         return PortfolioSerialier(
             obj.portfolios, context=context, many=True
         ).data
