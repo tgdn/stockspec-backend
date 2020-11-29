@@ -20,8 +20,6 @@ class BetsViewSet(ModelViewSet):
     def update(self, request, *args, **kwargs):
         raise PermissionDenied()
 
-    # def retrieve():
-
     def create(self, request, *args, **kwargs):
         """
         Logically the same code as the parent,
