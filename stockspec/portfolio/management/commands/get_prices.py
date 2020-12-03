@@ -8,4 +8,4 @@ class Command(APIBaseCommand):
 
     def handle(self, *args, **kwargs):
         symbols = Ticker.objects.values_list("symbol", flat=True)
-        self.av.fetch_symbols(symbols)
+        self.av.import_symbols(list(symbols))
