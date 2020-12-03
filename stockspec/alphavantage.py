@@ -175,7 +175,7 @@ class AlphaVantage:
         symbols_left = symbols[:]  # clone list
         api_keygen = itertools.cycle(self.api_key_pool)
         while len(symbols_left) != 0:
-            logger.info(f"Attempting to fetch {len(symbols)} symbols...")
+            logger.info(f"Attempting to fetch {len(symbols_left)} symbols...")
             for i, symbol in enumerate(symbols_left):
                 try:
                     total, inserted = self.fetch_symbol(
