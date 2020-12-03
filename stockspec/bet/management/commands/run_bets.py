@@ -14,9 +14,9 @@ class Command(BaseCommand):
         now = timezone.now()
         bets = (
             Bet.ongoing()
-            .prefetch_related("portfolios")
-            .prefetch_related("portfolios__tickers")
-            .prefetch_related("portfolios__user")
+            .prefetch_related(
+                "portfolios", "portfolios__tickers", "portfolios__user"
+            )
             .filter(end_time__isnull=False, end_time__lte=now)
         )
 
