@@ -10,3 +10,4 @@ sentry-sdk==0.19.0
 social-auth-app-django==4.0.0
 django-cors-headers==3.5.0
 social-auth-core==3.3.3
+tqdm==4.52.0

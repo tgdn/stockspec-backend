@@ -13,32 +13,20 @@ from django.conf import settings
 from django.utils import timezone
 from django.utils.dateparse import parse_datetime, parse_date
 
+from stockspec.exceptions import APIRateLimited
 from stockspec.portfolio.models import Ticker, StockPrice
 
 logger = logging.getLogger(__name__)
 
-OFFSET_TIMEZONE_MAP = {
-    "UTC-05": "US/Eastern",
-}
-
-
-class APIRateLimited(Exception):
-    """Rate limited by AlphaVantage"""
-
-    def __init__(self, symbol: str):
-        super().__init__(f"{symbol}: api ratelimit")
-
 
 class AlphaVantage:
-    """A simple threaded interface to the AlphaVantage api.
-    """
+    """A simple threaded interface to the AlphaVantage api."""
 
     API_URL = "https://www.alphavantage.co/query?"
-    # in seconds
-    REQUEST_TIMEOUT = 5
+    REQUEST_TIMEOUT = 5  # in seconds
     MAX_RETRIES = 3
 
-    def __init__(self, api_key_pool: str):
+    def __init__(self, api_key_pool: List[str]):
         self.api_key_pool = api_key_pool
         self.session = requests.Session()
         # setup adaptor with retries
@@ -46,12 +34,12 @@ class AlphaVantage:
         self.session.mount("http://", adapter)
         self.session.mount("https://", adapter)
 
-    def _parse(self, content):
+    def parse(self, content):
         """Decode and parse CSV content from request"""
         decoded = content.decode("utf-8")
         return csv.DictReader(decoded.splitlines(), delimiter=",")
 
-    def _insert_prices(self, symbol: str, prices: List):
+    def insert_prices(self, symbol: str, prices: List):
         """Insert new prices in the db"""
         # get or create ticker and get company info if new
         ticker, created = Ticker.objects.get_or_create(symbol=symbol)
@@ -88,16 +76,21 @@ class AlphaVantage:
 
         # insert all prices
         StockPrice.objects.bulk_create(objs)
-        # we dont want to update the last_updated
+        # we dont want to update ticker
         # unless we inserted some rows
         if len(objs) > 0:
+            # get last 2 rows and update last_price and performance
+            start, end = StockPrice.get_series(symbol, 2)
+            ticker.last_price = end.close_price
+            ticker.delta = end.close_price - start.close_price
+            ticker.percentage_change = ticker.delta / start.close_price
             ticker.last_updated = timezone.now()
             ticker.save()
 
         # number of actually inserted prices
         return len(objs)
 
-    def _fetch(self, **params):
+    def fetch(self, **params):
         """encode url and make request"""
 
         symbol = params.get("symbol")
@@ -127,84 +120,76 @@ class AlphaVantage:
         logger.info(f"Fetching prices for: {symbol} with key: {api_key}")
         function = "TIME_SERIES_DAILY_ADJUSTED"
         # make request
-        res = self._fetch(apikey=api_key, function=function, symbol=symbol,)
-        reader = self._parse(res.content)  # parse CSV
+        res = self.fetch(apikey=api_key, function=function, symbol=symbol,)
+        reader = self.parse(res.content)  # parse CSV
         res.close()  # avoid running out of request pools
         rows = list(reader)
 
         total_rows = len(rows)
         total_inserted = 0
         if total_rows > 0:
-            total_inserted = self._insert_prices(symbol, rows)
+            total_inserted = self.insert_prices(symbol, rows)
         else:
             logger.info(f"Could not find any prices for symbol: {symbol}")
 
         return total_rows, total_inserted
 
-    def fetch_symbols(self, symbols: List[str]):
-        """A helper method to fetch symbols concurrently"""
+    # def fetch_symbols(self, symbols: List[str]):
+    #     """A helper method to fetch symbols concurrently"""
 
-        # api key generator
-        # each key can be use 5 times/second.
-        # so we pause every 5*key count
-        api_keygen = itertools.cycle(self.api_key_pool)
-        threshold = max(1, len(self.api_key_pool) - 1)
+    #     # api key generator
+    #     # each key can be used 5 times/minute.
+    #     # so we pause every key count to avoid being rate limited
+    #     api_keygen = itertools.cycle(self.api_key_pool)
+    #     threshold = 2  # max(1, len(self.api_key_pool))
 
-        with ThreadPoolExecutor() as executor:
-            fn = self.fetch_symbol
-            futures_symbol = {}
-            for i, symbol in enumerate(symbols, 1):
-                futures_symbol[
-                    executor.submit(fn, symbol, next(api_keygen))
-                ] = symbol
-                if i % threshold == 0:
-                    sleep(65)  # sleep one minute when threshold is reached
+    #     with ThreadPoolExecutor() as executor:
+    #         fn = self.fetch_symbol
+    #         futures_symbol = {}
 
-            for future in as_completed(futures_symbol):
-                symbol = futures_symbol[future]
-                try:
-                    total, inserted = future.result()
-                except Exception as ex:
-                    logger.error(f"{symbol} generated an exception:\n{ex}")
-                else:
-                    logger.info(f"{symbol}: found {total}, inserted {inserted}")
+    #         for i, symbol in enumerate(symbols, 1):
+    #             futures_symbol[
+    #                 executor.submit(fn, symbol, next(api_keygen))
+    #             ] = symbol
+    #             if i % threshold == 0:
+    #                 sleep(5)  # sleep a little
+
+    #         for future in as_completed(futures_symbol):
+    #             symbol = futures_symbol[future]
+    #             try:
+    #                 total, inserted = future.result()
+    #             except Exception as ex:
+    #                 logger.error(f"{symbol} generated an exception:\n{ex}")
+    #             else:
+    #                 logger.info(f"{symbol}: found {total}, inserted {inserted}")
 
     def import_symbols(self, symbols: List[str]):
-        """A non threaded method that imports
+        """
+        A non threaded method that imports
         news symbols into the system.
         It executes 3 requests every 30 seconds to avoid
         being locked out of the api. (prices, timezone, company_info)
         This means symbols are imported at a rate of 2 per minute (slow).
         """
 
+        symbols_left = symbols[:]  # clone list
         api_keygen = itertools.cycle(self.api_key_pool)
-        for symbol in symbols:
-            self.fetch_symbol(symbol, next(api_keygen))
-            sleep(10)
-
-    def get_timezone(self, symbol: str):
-        """Search symbol in AV to get timezone"""
-
-        function = "SYMBOL_SEARCH"
-
-        res = self._fetch(function=function, keywords=symbol)
-        rows = list(self._parse(res.content))
-        if len(rows) == 0:
-            logger.info(f"No results trying to fetch timezone for {symbol}")
-            return
-
-        # Let's use the first match
-        result = rows[0]
-        timezone = OFFSET_TIMEZONE_MAP.get(result.get("timezone"))
-
-        tz = None
-        try:
-            tz = pytz.timezone(timezone)
-        except pytz.exceptions.UnknownTimeZoneError:
-            pass
-
-        # return none if timezone not found
-        return tz
+        while len(symbols_left) != 0:
+            logger.info(f"Attempting to fetch {len(symbols_left)} symbols...")
+            for i, symbol in enumerate(symbols_left):
+                try:
+                    total, inserted = self.fetch_symbol(
+                        symbol, next(api_keygen)
+                    )
+                except Exception as ex:
+                    logger.error(f"{symbol} generated an exception:\n{ex}")
+                else:
+                    logger.info(f"{symbol}: found {total}, inserted {inserted}")
+                if i != 0 and i % len(self.api_key_pool) == 0:
+                    sleep(10)
+                else:
+                    symbols_left.remove(symbol)
+                    sleep(5)
 
     def get_company_info(self, ticker: Ticker):
         """Get company info from symbol"""
@@ -213,7 +198,7 @@ class AlphaVantage:
         symbol = ticker.symbol
 
         def fetch():
-            return self._fetch(function=function, symbol=symbol)
+            return self.fetch(function=function, symbol=symbol)
 
         success = False
         company = None
@@ -224,11 +209,11 @@ class AlphaVantage:
         while not success:
             try:
                 company = res.json()
-                # avoid getting locked out of api
+                # avoid getting rate limited
                 if company.get("Note") is not None:
                     sleep_time = 60  # randrange(30, 90, 15)
                     logger.info(
-                        f"{symbol}: Got locked out, retrying in {sleep_time:.2f}s"
+                        f"{symbol}: Got rate limited, retrying in {sleep_time:.2f}s"
                     )
                     sleep(sleep_time)
                     continue

@@ -13,3 +13,16 @@ def api_exception_handler(exc, context):
     response.data["ok"] = False
 
     return response
+
+
+class APIRateLimited(Exception):
+    """Rate limited by AlphaVantage"""
+
+    def __init__(self, symbol: str):
+        super().__init__(f"{symbol}: api ratelimit")
+
+
+class SerializerRequestMissing(Exception):
+    """Raised when a serializer is missing request in context"""
+
+    message = "Request is missing in serializer"
