@@ -1,5 +1,6 @@
+from django.utils import timezone
 from django.db import models
-from django.db.models import Count, Subquery
+from django.db.models import Q, Count, Subquery
 
 from stockspec.users.models import User
 from stockspec.portfolio.models import Portfolio
@@ -51,14 +52,19 @@ class Bet(models.Model):
 
     @staticmethod
     def ongoing():
+        """Bets not finished yet"""
         return (
             Bet.objects.all()
             .annotate(portfolio_count=Count("portfolios"))
-            .filter(portfolio_count=2, winner__isnull=True)
+            .filter(
+                Q(portfolio_count=2)
+                & (Q(winner__isnull=True) | Q(end_time__gte=timezone.now()))
+            )
         )
 
     @staticmethod
     def awaiting():
+        """Bets awaiting an opponent"""
         return (
             Bet.objects.all()
             .annotate(portfolio_count=Count("portfolios"))

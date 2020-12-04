@@ -1,11 +1,20 @@
+import logging
+
 from rest_framework import status
+from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.viewsets import ModelViewSet
 from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 
 from stockspec.bet.models import Bet
-from stockspec.bet.serializers import BetSerializer, CreateBetSerializer
+from stockspec.bet.serializers import (
+    BetSerializer,
+    CreateBetSerializer,
+    JoinBetSerializer,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class BetsViewSet(ModelViewSet):
@@ -30,6 +39,20 @@ class BetsViewSet(ModelViewSet):
         self.perform_create(serializer)
         outserizalizer = self.serializer_class(instance=serializer.instance)
         return Response(outserizalizer.data, status.HTTP_201_CREATED)
+
+    @action(detail=True, methods=["POST"])
+    def join(self, request):
+        bet: Bet = self.get_object()
+
+        # Can only join awaiting bets
+        # we need to avoid race conditions.
+        if bet.portfolios.count() != 1:
+            logger.info(f"Bet #{bet.id} cannot be joined")
+            raise PermissionDenied
+        serializer = JoinBetSerializer(bet, data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        return Response()
 
     def get_serializer_class(self):
         if self.action == "create":

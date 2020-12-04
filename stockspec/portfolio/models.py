@@ -148,6 +148,15 @@ class Portfolio(models.Model):
         return sum(returns) / len(returns)
 
     @classmethod
+    def get_or_create_from_tickers(cls, user: User, tickers: List[Ticker]):
+        """Avoid recreating a portfolio which contains the same tickers."""
+        portfolio = cls.exact_tickers(tickers).filter(user=user).first()
+        if portfolio is None:
+            portfolio = cls.object.create(user=user)
+            portfolio.tickers.set(tickers)
+        return portfolio
+
+    @classmethod
     def exact_tickers(cls, tickers: List[Ticker]):
         """A method that returns portfolios with exactly given tickers.
 
