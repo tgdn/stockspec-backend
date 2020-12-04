@@ -152,7 +152,7 @@ class Portfolio(models.Model):
         """Avoid recreating a portfolio which contains the same tickers."""
         portfolio = cls.exact_tickers(tickers).filter(user=user).first()
         if portfolio is None:
-            portfolio = cls.object.create(user=user)
+            portfolio = cls.objects.create(user=user)
             portfolio.tickers.set(tickers)
         return portfolio
 

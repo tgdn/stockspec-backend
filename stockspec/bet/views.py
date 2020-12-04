@@ -37,7 +37,9 @@ class BetsViewSet(ModelViewSet):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         self.perform_create(serializer)
-        outserizalizer = self.serializer_class(instance=serializer.instance)
+        outserizalizer = self.serializer_class(
+            instance=serializer.instance, context=self.get_serializer_context()
+        )
         return Response(outserizalizer.data, status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["POST"])
@@ -60,7 +62,9 @@ class BetsViewSet(ModelViewSet):
         serializer.is_valid(raise_exception=True)
         serializer.save()
 
-        outserizalizer = self.serializer_class(instance=serializer.instance)
+        outserizalizer = self.serializer_class(
+            instance=serializer.instance, context=self.get_serializer_context()
+        )
         return Response(outserizalizer.data, status.HTTP_201_CREATED)
 
     def get_serializer_class(self):
