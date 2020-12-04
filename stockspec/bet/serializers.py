@@ -53,7 +53,7 @@ class BetSerializer(serializers.ModelSerializer):
         with_tickers = False
 
         # is it the current and only user in the bet?
-        if is_awaiting and obj.portfolios.first().user.id == user.id:
+        if is_awaiting and obj.portfolios.first().user == user:
             with_tickers = True
         # the bet has already started?
         elif all([is_full, bool(obj.start_time), bool(obj.end_time)]):
@@ -131,7 +131,7 @@ class JoinBetSerializer(serializers.ModelSerializer):
             raise SerializerRequestMissing
 
         user = request.user
-        tickers = validate_tickers.pop("tickers")
+        tickers = validated_data.pop("tickers")
         # get and set portfolio
         portfolio = Portfolio.get_or_create_from_tickers(user, tickers)
         instance.portfolios.add(portfolio)
@@ -144,6 +144,7 @@ class JoinBetSerializer(serializers.ModelSerializer):
 
         now = timezone.now()
         instance.start_time = now
+        # beware, we assume data in database is consistent, options are: 1D/1W
         instance.end_time = now + deltas[instance.duration]
         instance.save()
 

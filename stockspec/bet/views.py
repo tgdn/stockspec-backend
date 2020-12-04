@@ -41,22 +41,33 @@ class BetsViewSet(ModelViewSet):
         return Response(outserizalizer.data, status.HTTP_201_CREATED)
 
     @action(detail=True, methods=["POST"])
-    def join(self, request):
+    def join(self, request, *args, **kwargs):
+        """
+        Join a bet awaiting for opponent.
+        We check that there is only one opponent,
+        validate the posted data and start the bet.
+        """
+        # NOTE: we need to avoid race conditions.
+        # These will set the valid queryset to use: awaiting bets
+        self.all_bets = True
+        self.awaiting = True
         bet: Bet = self.get_object()
 
-        # Can only join awaiting bets
-        # we need to avoid race conditions.
-        if bet.portfolios.count() != 1:
-            logger.info(f"Bet #{bet.id} cannot be joined")
+        if bet.portfolios.first().user == request.user:
+            # cannot join your own bet
             raise PermissionDenied
-        serializer = JoinBetSerializer(bet, data=request.data)
+        serializer = self.get_serializer(bet, data=request.data)
         serializer.is_valid(raise_exception=True)
+        serializer.save()
 
-        return Response()
+        outserizalizer = self.serializer_class(instance=serializer.instance)
+        return Response(outserizalizer.data, status.HTTP_201_CREATED)
 
     def get_serializer_class(self):
         if self.action == "create":
             return CreateBetSerializer
+        elif self.action == "join":
+            return JoinBetSerializer
         return super().get_serializer_class()
 
     def get_queryset(self):

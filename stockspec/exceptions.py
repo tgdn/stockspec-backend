@@ -24,3 +24,5 @@ class APIRateLimited(Exception):
 
 class SerializerRequestMissing(Exception):
     """Raised when a serializer is missing request in context"""
+
+    message = "Request is missing in serializer"
