@@ -4,8 +4,7 @@ from . import APIBaseCommand
 
 
 class Command(APIBaseCommand):
-    """Import new tickers into the system
-    """
+    """Import new tickers into the system"""
 
     def add_arguments(self, parser: argparse.ArgumentParser):
         parser.add_argument(
@@ -14,4 +13,7 @@ class Command(APIBaseCommand):
 
     def handle(self, *args, **kwargs):
         symbols = kwargs.get("tickers")
-        self.av.import_symbols(symbols)
+        try:
+            self.av.import_symbols(symbols)
+        except KeyboardInterrupt:
+            print("Exiting early...")

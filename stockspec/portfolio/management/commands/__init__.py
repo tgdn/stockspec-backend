@@ -5,8 +5,7 @@ from stockspec.alphavantage import AlphaVantage
 
 
 class APIBaseCommand(BaseCommand):
-    """An BaseCommand abstract class to use with AlphaVantage
-    """
+    """An BaseCommand abstract class to use with AlphaVantage"""
 
     def __init__(self):
         self.av = AlphaVantage(settings.ALPHAVANTAGE_KEY_POOL)
