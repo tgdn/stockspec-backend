@@ -1,7 +1,7 @@
 import csv
 import logging
 import requests
-import itertools
+from itertools import cycle
 from random import randrange
 from time import sleep
 from urllib.parse import urlencode
@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 
 
 class AlphaVantage:
-    """A simple threaded interface to the AlphaVantage api."""
+    """A simple interface to the AlphaVantage api."""
 
     API_URL = "https://www.alphavantage.co/query?"
     REQUEST_TIMEOUT = 5  # in seconds
@@ -28,6 +28,8 @@ class AlphaVantage:
 
     def __init__(self, api_key_pool: List[str]):
         self.api_key_pool = api_key_pool
+        self.keygen = cycle(api_key_pool)
+
         self.session = requests.Session()
         # setup adaptor with retries
         adapter = requests.adapters.HTTPAdapter(max_retries=self.MAX_RETRIES)
@@ -41,6 +43,7 @@ class AlphaVantage:
 
     def insert_prices(self, symbol: str, prices: List):
         """Insert new prices in the db"""
+
         # get or create ticker and get company info if new
         ticker, created = Ticker.objects.get_or_create(symbol=symbol)
         if created:
@@ -76,8 +79,7 @@ class AlphaVantage:
 
         # insert all prices
         StockPrice.objects.bulk_create(objs)
-        # we dont want to update ticker
-        # unless we inserted some rows
+        # we dont want to update a ticker unless we inserted some rows
         if len(objs) > 0:
             # get last 2 rows and update last_price and performance
             start, end = StockPrice.get_series(symbol, 2)
@@ -112,15 +114,17 @@ class AlphaVantage:
 
         return res
 
-    def fetch_symbol(self, symbol: str, api_key: str) -> Tuple[int, int]:
+    def fetch_symbol(self, symbol: str) -> Tuple[int, int]:
         """Fetch prices for a symbol.
         At the moment we fetch the last 100 daily close prices.
         """
 
-        logger.info(f"Fetching prices for: {symbol} with key: {api_key}")
+        logger.info(f"Fetching {symbol}")
         function = "TIME_SERIES_DAILY_ADJUSTED"
         # make request
-        res = self.fetch(apikey=api_key, function=function, symbol=symbol,)
+        res = self.fetch(
+            apikey=next(self.keygen), function=function, symbol=symbol,
+        )
         reader = self.parse(res.content)  # parse CSV
         res.close()  # avoid running out of request pools
         rows = list(reader)
@@ -134,53 +138,19 @@ class AlphaVantage:
 
         return total_rows, total_inserted
 
-    # def fetch_symbols(self, symbols: List[str]):
-    #     """A helper method to fetch symbols concurrently"""
-
-    #     # api key generator
-    #     # each key can be used 5 times/minute.
-    #     # so we pause every key count to avoid being rate limited
-    #     api_keygen = itertools.cycle(self.api_key_pool)
-    #     threshold = 2  # max(1, len(self.api_key_pool))
-
-    #     with ThreadPoolExecutor() as executor:
-    #         fn = self.fetch_symbol
-    #         futures_symbol = {}
-
-    #         for i, symbol in enumerate(symbols, 1):
-    #             futures_symbol[
-    #                 executor.submit(fn, symbol, next(api_keygen))
-    #             ] = symbol
-    #             if i % threshold == 0:
-    #                 sleep(5)  # sleep a little
-
-    #         for future in as_completed(futures_symbol):
-    #             symbol = futures_symbol[future]
-    #             try:
-    #                 total, inserted = future.result()
-    #             except Exception as ex:
-    #                 logger.error(f"{symbol} generated an exception:\n{ex}")
-    #             else:
-    #                 logger.info(f"{symbol}: found {total}, inserted {inserted}")
-
     def import_symbols(self, symbols: List[str]):
         """
-        A non threaded method that imports
-        news symbols into the system.
-        It executes 3 requests every 30 seconds to avoid
-        being locked out of the api. (prices, timezone, company_info)
-        This means symbols are imported at a rate of 2 per minute (slow).
+        A non threaded method that imports news symbols into the system.
+        It executes requests every couple of seconds to avoid being
+        rate limited by the api.
         """
 
         symbols_left = symbols[:]  # clone list
-        api_keygen = itertools.cycle(self.api_key_pool)
-        while len(symbols_left) != 0:
+        while len(symbols_left[:]) != 0:
             logger.info(f"Attempting to fetch {len(symbols_left)} symbols...")
             for i, symbol in enumerate(symbols_left):
                 try:
-                    total, inserted = self.fetch_symbol(
-                        symbol, next(api_keygen)
-                    )
+                    total, inserted = self.fetch_symbol(symbol)
                 except Exception as ex:
                     logger.error(f"{symbol} generated an exception:\n{ex}")
                 else:
@@ -198,7 +168,9 @@ class AlphaVantage:
         symbol = ticker.symbol
 
         def fetch():
-            return self.fetch(function=function, symbol=symbol)
+            return self.fetch(
+                apikey=next(self.keygen), function=function, symbol=symbol
+            )
 
         success = False
         company = None
