@@ -95,10 +95,7 @@ class CreateBetSerializer(serializers.ModelSerializer):
         return validate_tickers(value)
 
     def create(self, validated_data):
-        """Create a new bet.
-        Checks whether a portfolio with given tickers exists,
-        otherwise it creates one, and uses it for this bet.
-        """
+        """Create a new bet, validate tickers and reuse portfolios."""
         request = self.context.get("request")
         if request is None:
             raise SerializerRequestMissing

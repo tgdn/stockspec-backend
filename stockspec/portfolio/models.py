@@ -149,7 +149,10 @@ class Portfolio(models.Model):
 
     @classmethod
     def get_or_create_from_tickers(cls, user: User, tickers: List[Ticker]):
-        """Avoid recreating a portfolio which contains the same tickers."""
+        """
+        Check whether a portfolio with given tickers exists and returns it,
+        otherwise it creates one and returns it.
+        """
         portfolio = cls.exact_tickers(tickers).filter(user=user).first()
         if portfolio is None:
             portfolio = cls.objects.create(user=user)
