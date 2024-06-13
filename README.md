@@ -1,4 +1,6 @@
-# AlertMap
+# Stockspec
+
+Stock speculation betting backend API.
 
 ## Getting the code
 
